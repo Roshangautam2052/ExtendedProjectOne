@@ -35,7 +35,7 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
       case dataModel: DataModel => Ok {
         Json.toJson(dataModel)
       }
-      case _ => Status(NOT_FOUND)(s"Could not find  the book with id: $id")
+      case _ => NotFound (s"Could not find  the book with id: $id")
     }
 
   }
