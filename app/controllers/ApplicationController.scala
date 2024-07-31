@@ -35,14 +35,14 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
       case dataModel: DataModel => Ok {
         Json.toJson(dataModel)
       }
-      case _ => Status(NOT_FOUND)(s"Successfully deleted the book with id: $id")
+      case _ => Status(NOT_FOUND)(s"Could not find  the book with id: $id")
     }
 
   }
 
   def update(id: String): Action[JsValue] = Action.async(parse.json) { implicit request =>
     request.body.validate[DataModel] match {
-      case JsSuccess(dataModel, _) =>
+      case JsSuccess(dataModel: DataModel, _) =>
         dataRepository.update(id, dataModel).map { result =>
           if (result.getMatchedCount > 0 && result.getModifiedCount > 0) {
             Accepted(Json.toJson(request.body))
