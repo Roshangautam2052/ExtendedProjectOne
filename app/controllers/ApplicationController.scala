@@ -1,20 +1,17 @@
 package controllers
 
-import akka.actor.TypedActor.dispatcher
 import models.DataModel
 import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
-
-import javax.inject.{Inject, Singleton}
-import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents, Request}
+import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import repositories.DataRepository
 
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 
 @Singleton
 class ApplicationController @Inject()(val controllerComponents: ControllerComponents,
-                                      val dataRepository: DataRepository, val ec: ExecutionContext) extends BaseController {
+                                      val dataRepository: DataRepository, implicit val ec: ExecutionContext) extends BaseController {
 
   def index(): Action[AnyContent] = Action.async { implicit request =>
     dataRepository.index().map {
