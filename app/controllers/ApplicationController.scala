@@ -31,8 +31,13 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
   def create: Action[JsValue] = Action.async(parse.json) { implicit request =>
     request.body.validate[DataModel] match {
       case JsSuccess(dataModel, _) =>
-        dataRepository.create(dataModel).map(_ => Created)
-      case JsError(_) => Future(BadRequest)
+        dataRepository.create(dataModel).map(_ => Created
+        {
+          Json.toJson(s"Successfully Created ${request.body}")
+        })
+      case JsError(_) => Future(BadRequest{
+        Json.toJson(s"Invalid body ${request.body}")
+      })
     }
   }
 
@@ -51,13 +56,15 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
       case JsSuccess(dataModel: DataModel, _) =>
         dataRepository.update(id, dataModel).map { result =>
           if (result.getMatchedCount > 0 && result.getModifiedCount > 0) {
-            Accepted(Json.toJson(request.body))
+            Accepted(Json.toJson(s"Updated Successfully:${request.body}"))
           }
           else {
-            NotFound(Json.toJson(id))
+            NotFound(Json.toJson(s"The book of given: $id not found"))
           }
         }
-      case JsError(_) => Future(BadRequest)
+      case JsError(_) => Future(BadRequest{
+        Json.toJson(s"The request body is invalid: ${request.body}")
+      })
     }
 
 

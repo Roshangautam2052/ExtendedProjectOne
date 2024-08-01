@@ -26,10 +26,11 @@ class ApplicationControllerSpec extends BaseSpecWithApplication {
     "invalid description"
   )
 
-  private val updatedDataModel: DataModel = dataModel.copy("12345")
+  private val updatedDataModel: DataModel = dataModel.copy("abcd", "Lord of the rings", "Fictional", 200)
+  private val invalidIdBody: DataModel = dataModel.copy("1234", "Lord of the rings", "Fictional", 200)
 
   "ApplicationController. index()" should {
-    "return http status OK" when {
+    "return the list of books and return http status OK" when {
       "the request is valid and database is not empty" in {
         val result = TestApplicationController.index()(FakeRequest())
         status(result) shouldBe OK
@@ -45,53 +46,85 @@ class ApplicationControllerSpec extends BaseSpecWithApplication {
   }
 
   "ApplicationController. create()" should {
-    "create a book in a database when the data model is valid" in {
-      beforeEach()
-      val request: FakeRequest[JsValue] = buildPost("/api").withBody[JsValue](Json.toJson(dataModel))
-      val createdResult: Future[Result] = TestApplicationController.create()(request)
-      status(createdResult) shouldBe Status.CREATED
-      afterEach()
+    "add book to the database and return CREATED " when {
+      "the data model is valid and inserted in the database" in {
+        beforeEach()
+        val request: FakeRequest[JsValue] = buildPost("/api").withBody[JsValue](Json.toJson(dataModel))
+        val createdResult: Future[Result] = TestApplicationController.create()(request)
+        status(createdResult) shouldBe Status.CREATED
+        afterEach()
+      }
     }
-    "return BAD_REQUEST when the data model is invalid " in {
-      beforeEach()
-      val request: FakeRequest[JsValue] = buildPost("/api").withBody[JsValue](Json.toJson(invalidDataModel))
-      val createdResult: Future[Result] = TestApplicationController.create()(request)
-      status(createdResult) shouldBe Status.BAD_REQUEST
-      afterEach()
+    "return BAD_REQUEST" when {
+      "the data model is invalid" in {
+        beforeEach()
+        val request: FakeRequest[JsValue] = buildPost("/api").withBody[JsValue](Json.toJson(invalidDataModel))
+        val createdResult: Future[Result] = TestApplicationController.create()(request)
+        status(createdResult) shouldBe Status.BAD_REQUEST
+        afterEach()
+      }
     }
-
   }
 
   "ApplicationController. read(id:String)" should {
-    "find a book in the database by id" in {
-      val request: FakeRequest[JsValue] = buildGet(s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
-      val createdResult: Future[Result] = TestApplicationController.create()(request)
-
-      val readResult: Future[Result] = TestApplicationController.read("abcd")(FakeRequest())
-      status(readResult) shouldBe OK
-      contentAsJson(readResult).as[DataModel] shouldBe dataModel
+    " return the book with given id and return OK" when {
+      "the id exits in the database " in {
+        val request: FakeRequest[JsValue] = buildGet(s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
+        val createdResult: Future[Result] = TestApplicationController.create()(request)
+        val readResult: Future[Result] = TestApplicationController.read("abcd")(FakeRequest())
+        status(readResult) shouldBe OK
+        contentAsJson(readResult).as[DataModel] shouldBe dataModel
+      }
     }
-    "return NOT_FOUND when the book id is not found in the database" in {
-      val request: FakeRequest[JsValue] = FakeRequest(POST, s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
-      val createdResult: Future[Result] = TestApplicationController.create()(request)
-      status(createdResult) shouldBe Status.CREATED
-      // Read a book id that does not exists
-      val invalidId = "123"
-      val invalidReadRequest: FakeRequest[AnyContent] = FakeRequest(GET, s"/api/$invalidId")
-      val invalidRequest: Future[Result] = TestApplicationController.read(invalidId)(invalidReadRequest)
-      status(invalidRequest) shouldBe NOT_FOUND
+    "return NOT_FOUND" when {
+      "the book id is not found in the database" in {
+        val request: FakeRequest[JsValue] = FakeRequest(POST, s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
+        val createdResult: Future[Result] = TestApplicationController.create()(request)
+        status(createdResult) shouldBe Status.CREATED
+        // Read a book id that does not exists
+        val invalidId = "123"
+        val invalidReadRequest: FakeRequest[AnyContent] = FakeRequest(GET, s"/api/$invalidId")
+        val invalidRequest: Future[Result] = TestApplicationController.read(invalidId)(invalidReadRequest)
+        status(invalidRequest) shouldBe NOT_FOUND
+      }
 
     }
   }
 
   "ApplicationController. update(id:String)" should {
-    "update a book in the database when the book id is found" in {
-      val request: FakeRequest[JsValue] = buildPost(s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
-      val createdResult: Future[Result] = TestApplicationController.create()(request)
-      val updatedRequest: FakeRequest[JsValue] = FakeRequest(PUT, s"/api/${dataModel._id}").withBody(Json.toJson(updatedDataModel))
-      val updatedResult: Future[Result] = TestApplicationController.update("abcd")(updatedRequest)
-      status(updatedResult) shouldBe ACCEPTED
+    "update the book with given id and return ACCEPTED" when {
+      "the request body is valid and the id exists" in {
+        val request: FakeRequest[JsValue] = buildPost(s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
+        val createdResult: Future[Result] = TestApplicationController.create()(request)
+
+        // update the book with valid id
+        val updatedRequest: FakeRequest[JsValue] = FakeRequest(PUT, s"/api/${dataModel._id}").withBody(Json.toJson(updatedDataModel))
+        val updatedResult: Future[Result] = TestApplicationController.update("abcd")(updatedRequest)
+        status(updatedResult) shouldBe ACCEPTED
+      }
     }
+    "return NOT_FOUND" when {
+      "the request body is valid and the id does not exists" in {
+        val request: FakeRequest[JsValue] = buildPost(s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
+        val createdResult: Future[Result] = TestApplicationController.create()(request)
+        // update the book with valid body but with invalid id
+        val invalidId: String = "1234"
+        val updatedRequest: FakeRequest[JsValue] = FakeRequest(PUT, s"/api/${invalidId}").withBody(Json.toJson(invalidIdBody))
+        val updatedResult: Future[Result] = TestApplicationController.update(invalidId)(updatedRequest)
+        status(updatedResult) shouldBe NOT_FOUND
+      }
+    }
+    "return Bad_Request" when {
+      "the request body is invalid " in {
+        val request: FakeRequest[JsValue] = buildPost(s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
+        val createdResult: Future[Result] = TestApplicationController.create()(request)
+        // update the book with invalid body
+        val updatedRequest: FakeRequest[JsValue] = FakeRequest(PUT, s"/api/${dataModel._id}").withBody(Json.toJson(invalidDataModel))
+        val updatedResult: Future[Result] = TestApplicationController.update("abcd")(updatedRequest)
+        status(updatedResult) shouldBe BAD_REQUEST
+      }
+    }
+
   }
 
   "ApplicationController. delete(id:String)" should {
