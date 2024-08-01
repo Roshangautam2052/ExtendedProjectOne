@@ -8,5 +8,5 @@ case class DataModel(_id: String,
                      pageCount: Int)
 
 object DataModel{
-  implicit val formats: OFormat[DataModel] = Json.format[DataModel]
+  implicit val formats: OFormat[Book] = Json.format[Book]
 }

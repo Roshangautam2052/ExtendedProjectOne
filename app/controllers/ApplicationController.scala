@@ -1,10 +1,11 @@
 package controllers
 
 
-import models.DataModel
+import models.Book
 import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import repositories.DataRepository
+import services.LibraryService
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -12,11 +13,19 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ApplicationController @Inject()(val controllerComponents: ControllerComponents,
-                                      val dataRepository: DataRepository, implicit val ec: ExecutionContext) extends BaseController {
+                                      val dataRepository: DataRepository,
+                                      implicit val ec: ExecutionContext,
+                                      val service: LibraryService) extends BaseController {
 
+  def getGoogleBook(search: String, term: String): Action[AnyContent] = Action.async { implicit request =>
+    service.getGoogleBook(search = search, term = term).map {
+      case book: Book => Ok(Json.toJson(book))
+      case _ => NotFound
+    }
+  }
   def index(): Action[AnyContent] = Action.async { implicit request =>
     dataRepository.index().map {
-      case Right(item: Seq[DataModel]) => if(item.nonEmpty)Ok {
+      case Right(item: Seq[Book]) => if(item.nonEmpty)Ok {
         Json.toJson(item)
       }
       else{
@@ -29,7 +38,7 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
   }
 
   def create: Action[JsValue] = Action.async(parse.json) { implicit request =>
-    request.body.validate[DataModel] match {
+    request.body.validate[Book] match {
       case JsSuccess(dataModel, _) =>
         dataRepository.create(dataModel).map(_ => Created
         {
@@ -52,8 +61,8 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
 
 
   def update(id: String): Action[JsValue] = Action.async(parse.json) { implicit request =>
-    request.body.validate[DataModel] match {
-      case JsSuccess(dataModel: DataModel, _) =>
+    request.body.validate[Book] match {
+      case JsSuccess(dataModel: Book, _) =>
         dataRepository.update(id, dataModel).map { result =>
           if (result.getMatchedCount > 0 && result.getModifiedCount > 0) {
             Accepted(Json.toJson(s"Updated Successfully:${request.body}"))
