@@ -44,6 +44,7 @@ class DataRepository @Inject()(
   def read(id: String): Future[DataModel] =
     collection.find(byID(id)).headOption flatMap {
       case Some(data) => Future(data)
+      case None => Future.failed(new NoSuchElementException(s"Not data found"))
     }
 
   def update(id: String, book: DataModel): Future[result.UpdateResult] =

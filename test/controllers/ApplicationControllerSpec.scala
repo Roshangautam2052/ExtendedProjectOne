@@ -1,11 +1,9 @@
 package controllers
 
-import akka.util.ByteString
 import baseSpec.BaseSpecWithApplication
 import models.{DataModel, InvalidDataModel}
 import play.api.http.Status
 import play.api.libs.json.{JsValue, Json}
-import play.api.libs.streams.Accumulator
 import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
@@ -27,11 +25,21 @@ class ApplicationControllerSpec extends BaseSpecWithApplication {
     "invalid name",
     "invalid description"
   )
-  private val updatedDataModel = dataModel.copy(name = "updated test name")
+
+  private val updatedDataModel: DataModel = dataModel.copy("12345")
+
   "ApplicationController. index()" should {
-    val result = TestApplicationController.index()(FakeRequest())
-    "return Right" in {
-      status(result) shouldBe OK
+    "return http status OK" when {
+      "the request is valid and database is not empty" in {
+        val result = TestApplicationController.index()(FakeRequest())
+        status(result) shouldBe OK
+      }
+    }
+    "return http status of 404" when {
+      "the database is empty or no database exists" in {
+        val invalidResult = TestApplicationController.index()(FakeRequest())
+        status(invalidResult) shouldBe NOT_FOUND
+      }
     }
 
   }
@@ -58,13 +66,16 @@ class ApplicationControllerSpec extends BaseSpecWithApplication {
     "find a book in the database by id" in {
       val request: FakeRequest[JsValue] = buildGet(s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
       val createdResult: Future[Result] = TestApplicationController.create()(request)
+
       val readResult: Future[Result] = TestApplicationController.read("abcd")(FakeRequest())
       status(readResult) shouldBe OK
       contentAsJson(readResult).as[DataModel] shouldBe dataModel
     }
-    "return NOT_FOUND when the book id is not found" in {
+    "return NOT_FOUND when the book id is not found in the database" in {
       val request: FakeRequest[JsValue] = FakeRequest(POST, s"/api/${dataModel._id}").withBody[JsValue](Json.toJson(dataModel))
       val createdResult: Future[Result] = TestApplicationController.create()(request)
+      status(createdResult) shouldBe Status.CREATED
+      // Read a book id that does not exists
       val invalidId = "123"
       val invalidReadRequest: FakeRequest[AnyContent] = FakeRequest(GET, s"/api/$invalidId")
       val invalidRequest: Future[Result] = TestApplicationController.read(invalidId)(invalidReadRequest)

@@ -1,5 +1,6 @@
 package controllers
 
+
 import models.DataModel
 import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
@@ -15,8 +16,13 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
 
   def index(): Action[AnyContent] = Action.async { implicit request =>
     dataRepository.index().map {
-      case Right(item: Seq[DataModel]) => Ok {
+      case Right(item: Seq[DataModel]) => if(item.nonEmpty)Ok {
         Json.toJson(item)
+      }
+      else{
+        NotFound {
+          Json.toJson("The book list is empty")
+        }
       }
       case Left(error) => Status(error)(Json.toJson("Unable to find any books"))
     }
@@ -31,14 +37,14 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
   }
 
   def read(id: String): Action[AnyContent] = Action.async { implicit request =>
-    dataRepository.read(id).map {
-      case dataModel: DataModel => Ok {
-        Json.toJson(dataModel)
-      }
-      case _ => NotFound (s"Could not find  the book with id: $id")
+    dataRepository.read(id).map { dataModel =>
+      Ok(Json.toJson(dataModel))
+    } recover {
+      case _: NoSuchElementException => NotFound(s"Could not find the book with id: $id")
     }
-
   }
+
+
 
   def update(id: String): Action[JsValue] = Action.async(parse.json) { implicit request =>
     request.body.validate[DataModel] match {
