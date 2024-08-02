@@ -1,6 +1,6 @@
 package repositories
 
-import models.DataModel
+import models.Book
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Filters.empty
 import org.mongodb.scala.model._
@@ -14,23 +14,23 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class DataRepository @Inject()(
                                 mongoComponent: MongoComponent
-                              )(implicit ec: ExecutionContext) extends PlayMongoRepository[DataModel](
+                              )(implicit ec: ExecutionContext) extends PlayMongoRepository[Book](
   collectionName = "dataModels",
   mongoComponent = mongoComponent,
-  domainFormat = DataModel.formats,
+  domainFormat = Book.formats,
   indexes = Seq(IndexModel(
     Indexes.ascending("_id")
   )),
   replaceIndexes = false
 ) {
 
-  def index(): Future[Either[Int, Seq[DataModel]]]  =
+  def index(): Future[Either[Int, Seq[Book]]]  =
     collection.find().toFuture().map{
-      case books: Seq[DataModel] => Right(books)
+      case books: Seq[Book] => Right(books)
       case _ => Left(404)
     }
 
-  def create(book: DataModel): Future[DataModel] =
+  def create(book: Book): Future[Book] =
     collection
       .insertOne(book)
       .toFuture()
@@ -41,13 +41,13 @@ class DataRepository @Inject()(
       Filters.equal("_id", id)
     )
 
-  def read(id: String): Future[DataModel] =
+  def read(id: String): Future[Book] =
     collection.find(byID(id)).headOption flatMap {
       case Some(data) => Future(data)
       case None => Future.failed(new NoSuchElementException(s"Not data found"))
     }
 
-  def update(id: String, book: DataModel): Future[result.UpdateResult] =
+  def update(id: String, book: Book): Future[result.UpdateResult] =
     collection.replaceOne(
       filter = byID(id),
       replacement = book,

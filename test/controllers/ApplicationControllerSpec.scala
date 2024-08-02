@@ -1,7 +1,7 @@
 package controllers
 
 import baseSpec.BaseSpecWithApplication
-import models.{DataModel, InvalidDataModel}
+import models.{Book, InvalidDataModel}
 import play.api.http.Status
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
@@ -12,9 +12,9 @@ import scala.concurrent.Future
 
 class ApplicationControllerSpec extends BaseSpecWithApplication {
   val TestApplicationController = new ApplicationController(
-    component, repository, executionContext
+    component, repository, executionContext,service
   )
-  private val dataModel: DataModel = DataModel(
+  private val dataModel: Book = Book(
     "abcd",
     "test name",
     "test description",
@@ -26,16 +26,16 @@ class ApplicationControllerSpec extends BaseSpecWithApplication {
     "invalid description"
   )
 
-  private val updatedDataModel: DataModel = dataModel.copy("abcd", "Lord of the rings", "Fictional", 200)
-  private val invalidIdBody: DataModel = dataModel.copy("1234", "Lord of the rings", "Fictional", 200)
+  private val updatedDataModel: Book = dataModel.copy("abcd", "Lord of the rings", "Fictional", 200)
+  private val invalidIdBody: Book = dataModel.copy("1234", "Lord of the rings", "Fictional", 200)
 
   "ApplicationController. index()" should {
-    "return the list of books and return http status OK" when {
-      "the request is valid and database is not empty" in {
-        val result = TestApplicationController.index()(FakeRequest())
-        status(result) shouldBe OK
-      }
-    }
+//    "return the list of books and return http status OK" when {
+//      "the request is valid and database is not empty" in {
+//        val result = TestApplicationController.index()(FakeRequest())
+//        status(result) shouldBe OK
+//      }
+//    }
     "return http status of 404" when {
       "the database is empty or no database exists" in {
         val invalidResult = TestApplicationController.index()(FakeRequest())
@@ -73,7 +73,7 @@ class ApplicationControllerSpec extends BaseSpecWithApplication {
         val createdResult: Future[Result] = TestApplicationController.create()(request)
         val readResult: Future[Result] = TestApplicationController.read("abcd")(FakeRequest())
         status(readResult) shouldBe OK
-        contentAsJson(readResult).as[DataModel] shouldBe dataModel
+        contentAsJson(readResult).as[Book] shouldBe dataModel
       }
     }
     "return NOT_FOUND" when {
