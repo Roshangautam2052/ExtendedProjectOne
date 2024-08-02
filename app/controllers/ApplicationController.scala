@@ -1,7 +1,9 @@
 package controllers
 
 
-import models.Book
+import models.{Book, DataModel}
+import play.api.libs.json.Format.GenericFormat
+import play.api.libs.json.OFormat.oFormatFromReadsAndOWrites
 import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import repositories.DataRepository
@@ -19,7 +21,7 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
 
   def getGoogleBook(search: String, term: String): Action[AnyContent] = Action.async { implicit request =>
     service.getGoogleBook(search = search, term = term).map {
-      case book: Book => Ok(Json.toJson(book))
+      case dataModel => Ok(Json.toJson(dataModel))
       case _ => NotFound
     }
   }

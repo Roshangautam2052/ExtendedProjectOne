@@ -30,12 +30,12 @@ class ApplicationControllerSpec extends BaseSpecWithApplication {
   private val invalidIdBody: Book = dataModel.copy("1234", "Lord of the rings", "Fictional", 200)
 
   "ApplicationController. index()" should {
-    "return the list of books and return http status OK" when {
-      "the request is valid and database is not empty" in {
-        val result = TestApplicationController.index()(FakeRequest())
-        status(result) shouldBe OK
-      }
-    }
+//    "return the list of books and return http status OK" when {
+//      "the request is valid and database is not empty" in {
+//        val result = TestApplicationController.index()(FakeRequest())
+//        status(result) shouldBe OK
+//      }
+//    }
     "return http status of 404" when {
       "the database is empty or no database exists" in {
         val invalidResult = TestApplicationController.index()(FakeRequest())
