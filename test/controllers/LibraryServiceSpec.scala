@@ -2,18 +2,18 @@ package controllers
 
 import baseSpec.BaseSpec
 import connectors.LibraryConnector
-import models.Book
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
-import play.api.libs.json.{JsValue, Json, OFormat}
+import play.api.libs.json.Format.GenericFormat
+import play.api.libs.json.{JsValue, Json}
 import services.LibraryService
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class LibraryServiceSpec extends BaseSpec with MockFactory with ScalaFutures with GuiceOneServerPerSuite{
 
-  val mockConnector = mock[LibraryConnector]
+  val mockConnector: LibraryConnector = mock[LibraryConnector]
   implicit val executionContext: ExecutionContext = app.injector.instanceOf[ExecutionContext]
   val testService = new LibraryService(mockConnector)
 
@@ -28,7 +28,7 @@ class LibraryServiceSpec extends BaseSpec with MockFactory with ScalaFutures wit
     val url: String = "testUrl"
 
     "return a book" in {
-      (mockConnector.get[Book](url:String)(implicit rds: OFormat[Book], executionContext: ExecutionContext))
+      (mockConnector.get[???](_: ???)(_: ???, _: ???))
         .expects(url, *, *)
         .returning(Future(gameOfThrones.as[???]))
         .once()
@@ -38,6 +38,4 @@ class LibraryServiceSpec extends BaseSpec with MockFactory with ScalaFutures wit
       }
     }
   }
-
-
 }

@@ -21,7 +21,7 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
 
   def getGoogleBook(search: String, term: String): Action[AnyContent] = Action.async { implicit request =>
     service.getGoogleBook(search = search, term = term).map {
-      case dataModel => Ok(Json.toJson(dataModel))
+      case book: Book => Ok(Json.toJson(book))
       case _ => NotFound
     }
   }
