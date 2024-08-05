@@ -1,7 +1,8 @@
 package controllers
 
+import cats.data.EitherT
 import connectors.LibraryConnector
-import models.Book
+import models.{APIError, Book}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
@@ -32,29 +33,25 @@ class LibraryServiceSpec extends AnyWordSpec with Matchers with MockFactory with
     "return a book" in {
       (mockConnector.get[Book](_:String)(_: OFormat[Book], _: ExecutionContext))
         .expects(url, *, *)
-        .returning(Future.successful(gameOfThrones.as[Book]))
+        .returning(EitherT.rightT(gameOfThrones.as[Book]))
         .once()
 
-       whenReady(testService.getGoogleBook(urlOverride = Some(url), search = "", term = "")) {
+       whenReady(testService.getGoogleBook(urlOverride = Some(url), search = "", term = "").value) {
          result =>
-           result shouldBe gameOfThrones.as[Book]
+           result shouldBe Right(gameOfThrones.as[Book])
       }
     }
     "return an error" in {
-      val url: String = "testUrl"
-
-      (mockConnector.get[Book](_: String)(_: OFormat[Book], _: ExecutionContext))
+      (mockConnector.get[Book](_: String) (_: OFormat[Book], _: ExecutionContext))
         .expects(url, *, *)
-        .returning(Future.successful(gameOfThrones.as[Book]))// How do we return an error?
+        .returning(EitherT.leftT(APIError.BadAPIResponse(500, "Could not connect")))
         .once()
 
-      whenReady(testService.getGoogleBook(urlOverride = Some(url), search = "", term = "")) { result =>
-        result shouldBe Some()
+      whenReady(testService.getGoogleBook(urlOverride = Some(url), search = "", term = "").value) { result =>
+        result shouldBe Left(APIError.BadAPIResponse(500, "Could not connect"))
       }
     }
-
   }
-
 }
 
 

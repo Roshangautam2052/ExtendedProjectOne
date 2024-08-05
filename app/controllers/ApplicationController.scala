@@ -1,7 +1,8 @@
 package controllers
 
 
-import models.{Book, DataModel}
+import cats.data.EitherT
+import models.{APIError, Book, DataModel}
 import play.api.libs.json.Format.GenericFormat
 import play.api.libs.json.OFormat.oFormatFromReadsAndOWrites
 import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
@@ -20,14 +21,15 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
                                       val service: LibraryService) extends BaseController {
 
   def getGoogleBook(search: String, term: String): Action[AnyContent] = Action.async { implicit request =>
-    service.getGoogleBook(search = search, term = term).map {
-      case book: Book => Ok(Json.toJson(book))
-      case _ => NotFound
+    service.getGoogleBook(search = search, term = term).value.map {
+      case Right(book) => Ok(Json.toJson(book))
+      case Left(error) => Status(error.httpResponseStatus)
     }
   }
+
   def index(): Action[AnyContent] = Action.async { implicit request =>
     dataRepository.index().map {
-      case Right(item: Seq[Book]) => if(item.nonEmpty)Ok {
+      case Right(item) => if(item.nonEmpty)Ok {
         Json.toJson(item)
       }
       else{
@@ -35,7 +37,7 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
           Json.toJson("The book list is empty")
         }
       }
-      case Left(error) => Status(error)(Json.toJson("Unable to find any books"))
+      case Left(error) => Status(error.httpResponseStatus)(Json.toJson(error.upstreamStatus))
     }
   }
 
@@ -60,7 +62,28 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
     }
   }
 
+  def findByName(name:String): Action[AnyContent] = Action.async { implicit request  =>
+     dataRepository.searchByName(name).map {
+       book => Ok(Json.toJson(book))
+     }recover {
+       case _: NoSuchElementException => NotFound(s"Could not find the book with the name: $name")
+     }
 
+  }
+  def updateFieldValue(id:String,fieldName:String,  newValue:String): Action[AnyContent] = Action.async { implicit request =>
+    dataRepository.updateField(id, fieldName, newValue).map{ result =>
+      if (result.getMatchedCount > 0 && result.getModifiedCount > 0) {
+        // Successfully updated
+        Accepted(Json.obj("message" -> s"Field '$fieldName' updated successfully"))
+      } else if (result.getMatchedCount > 0) {
+        // Document exists but field was not updated
+        Ok(Json.obj("message" -> s"Field '$fieldName' already has the value '$newValue' or was not modified"))
+      } else {
+        // Document not found
+        NotFound(Json.obj("message" -> s"Document with id '$id' not found"))
+      }
+    }
+  }
 
   def update(id: String): Action[JsValue] = Action.async(parse.json) { implicit request =>
     request.body.validate[Book] match {
@@ -77,8 +100,6 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
         Json.toJson(s"The request body is invalid: ${request.body}")
       })
     }
-
-
   }
 
   def delete(id: String): Action[AnyContent] = Action.async { implicit request =>
