@@ -3,8 +3,8 @@ package models
 import play.api.libs.json.{Json, OFormat}
 
 case class Book(_id: String,
-                title: String,
-                subtitle: String,
+                name: String,
+                description: String,
                 pageCount: Int)
 
 object Book{
