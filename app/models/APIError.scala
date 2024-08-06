@@ -19,7 +19,7 @@ sealed abstract class APIError(
       )
     final case class BadRequestError(upstreamStatus:Int, upstreamMessage: String)
       extends APIError(
-        Status.NOT_FOUND,
+        Status.BAD_REQUEST,
         s"Bad response from upstream; got status: ${upstreamStatus}, and got reason ${upstreamMessage}"
       )
   }
