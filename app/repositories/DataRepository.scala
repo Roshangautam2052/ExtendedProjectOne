@@ -1,15 +1,34 @@
 package repositories
 
-import models.Book
+import com.google.inject.ImplementedBy
+import models.{APIError, Book}
+import org.mongodb.scala.FindObservable
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Filters.empty
 import org.mongodb.scala.model._
-import org.mongodb.scala.result
+import org.mongodb.scala.result.{DeleteResult, UpdateResult}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
+
+@ImplementedBy(classOf[DataRepository])
+trait Repository {
+  def index(): Future[Either[APIError, Seq[Book]]]
+
+  def create(book: Book): Future[Either[APIError, Book]]
+
+  def read(id: String): Future[Either[APIError, Book]]
+
+  def searchByName(name: String): Future[Either[APIError, Book]]
+
+  def update(id: String, book: Book): Future[Either[APIError, UpdateResult]]
+
+  def updateField(id: String, fieldName: String, newValue: String): Future[Either[APIError, UpdateResult]]
+
+  def delete(id: String): Future[Either[APIError, DeleteResult]]
+}
 
 @Singleton
 class DataRepository @Inject()(
@@ -22,43 +41,104 @@ class DataRepository @Inject()(
     Indexes.ascending("_id")
   )),
   replaceIndexes = false
-) {
+) with Repository {
 
-  def index(): Future[Either[Int, Seq[Book]]]  =
-    collection.find().toFuture().map{
-      case books: Seq[Book] => Right(books)
-      case _ => Left(404)
+  def index(): Future[Either[APIError, Seq[Book]]] = {
+    collection.find().toFuture().map {
+      case book: Seq[Book] => Right(book)
+    }.recover {
+      case e: Exception =>
+        Left(APIError.DatabaseError(500, s"Database error occurred: ${e.getMessage}"))
     }
+  }
 
-  def create(book: Book): Future[Book] =
+
+  def create(book: Book): Future[Either[APIError, Book]] =
     collection
       .insertOne(book)
       .toFuture()
-      .map(_ => book)
+      .map { result =>
+        if (result.wasAcknowledged()) Right(book)
+        else Left(APIError.BadAPIResponse(500, "Failed to add book"))
 
-  private def byID(id: String): Bson =
+      }.recover {
+        case exception: Throwable => Left(APIError.DatabaseError(500, s"Failed to insert book due to ${exception.getMessage}"))
+      }
+
+  private def byID(id: String): Bson = {
     Filters.and(
       Filters.equal("_id", id)
     )
+  }
 
-  def read(id: String): Future[Book] =
-    collection.find(byID(id)).headOption flatMap {
-      case Some(data) => Future(data)
-      case None => Future.failed(new NoSuchElementException(s"Not data found"))
+  private def byName(name: String): Bson =
+    Filters.regex("name", s"^\\s*${java.util.regex.Pattern.quote(name)}\\s*$$", "i")
+
+  def read(id: String): Future[Either[APIError, Book]] = {
+    val findObservable: FindObservable[Book] = collection.find(byID(id))
+    // Convert FindObservable to Future
+    findObservable.toFuture().map { books =>
+      books.headOption match {
+        case Some(book) => Right(book)
+        case None => Left(APIError.NotFoundError(404, "Book is not found."))
+      }
+    }.recover {
+      case e: Throwable => Left(APIError.DatabaseError(500, s"Failed to retrieve book due to ${e.getMessage}"))
     }
+  }
 
-  def update(id: String, book: Book): Future[result.UpdateResult] =
+  def searchByName(name: String): Future[Either[APIError, Book]] = {
+    val findObservable: FindObservable[Book] = collection.find(byName(name))
+    findObservable.toFuture().map { book =>
+      book.headOption match {
+        case Some(book) => Right(book)
+        case None => Left(APIError.NotFoundError(404, s"The book with $name is not found."))
+      }
+    }.recover {
+      case e: Throwable => Left(APIError.DatabaseError(500, s"Failed to insert book due to ${e.getMessage}"))
+    }
+  }
+
+  def update(id: String, book: Book): Future[Either[APIError, UpdateResult]] = {
     collection.replaceOne(
       filter = byID(id),
       replacement = book,
       options = new ReplaceOptions().upsert(true) //What happens when we set this to false?
-    ).toFuture()
+    ).toFuture().map { updateResult =>
+      Right(updateResult)
+    }.recover {
+      case e: Throwable =>
+        Left(APIError.DatabaseError(500, s"An unexpected error occurred ${e.getMessage}")) // Handle other exceptions
+    }
+  }
 
-  def delete(id: String): Future[result.DeleteResult] =
+  def updateField(id: String, fieldName: String, newValue: String): Future[Either[APIError.DatabaseError, UpdateResult]] = {
+    val update = Updates.set(fieldName, newValue)
+    collection.updateOne(
+        filter = byID(id),
+        update = update,
+        options = new UpdateOptions().upsert(false)
+      ).toFuture().map { updateResult =>
+        Right(updateResult)
+      }
+      .recover {
+        case e: Throwable =>
+          Left(APIError.DatabaseError(500, s"An unexpected error occurred ${e.getMessage}")) // Handle other exceptions
+      }
+  }
+
+
+  def delete(id: String): Future[Either[APIError.DatabaseError, DeleteResult]] =
     collection.deleteOne(
-      filter = byID(id)
-    ).toFuture()
+        filter = byID(id)
+      ).toFuture().map { deleteResult =>
+        Right(deleteResult)
+      }
+      .recover {
+        case NonFatal(e) =>
+          Left(APIError.DatabaseError(500, s"An unexpected error occurred ${e.getMessage}")) // Handle other exceptions
+      }
 
-  def deleteAll(): Future[Unit] = collection.deleteMany(empty()).toFuture().map(_ => ()) //Hint: needed for tests
+  //def deleteAll(): Future[Unit] = collection.deleteMany(empty()).toFuture().map(_ => ()) //Hint: needed for tests
 
 }

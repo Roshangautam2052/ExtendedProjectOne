@@ -22,3 +22,4 @@ lazy val root = (project in file("."))
 
 libraryDependencies += ws
 
+libraryDependencies += ("org.typelevel"                %% "cats-core"                 % "2.3.0")
