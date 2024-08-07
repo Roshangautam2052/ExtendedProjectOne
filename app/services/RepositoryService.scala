@@ -2,13 +2,17 @@ package services
 
 import models.{APIError, Book}
 import org.mongodb.scala.result.{DeleteResult, UpdateResult}
-import repositories.DataRepository
+import repositories.{DataRepository, Repository}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class RepositoryService @Inject()(dataRepository: DataRepository)(implicit ec: ExecutionContext) {
+class RepositoryService @Inject()(dataRepository: Repository)(implicit ec: ExecutionContext) {
+
+  private def normalizeString(name: String): String = {
+    name.strip().toLowerCase
+  }
 
   def indexService(): Future[Either[APIError, Seq[Book]]] = {
     dataRepository.index().map {
@@ -23,6 +27,7 @@ class RepositoryService @Inject()(dataRepository: DataRepository)(implicit ec: E
     dataRepository.create(book).map {
       case Right(createdBook) => Right(createdBook)
       case Left(APIError.DatabaseError(code, message)) => Left(APIError.DatabaseError(code, message))
+      case Left(APIError.BadAPIResponse(code, message)) => Left(APIError.BadAPIResponse(code, message))
     }
 
   }
@@ -37,7 +42,7 @@ class RepositoryService @Inject()(dataRepository: DataRepository)(implicit ec: E
 
 
   def findByNameService(name: String): Future[Either[APIError, Book]] = {
-    dataRepository.searchByName(name).map {
+    dataRepository.searchByName(normalizeString(name)).map {
       case Right(book) => Right(book)
       case Left(APIError.DatabaseError(code, message)) => Left(APIError.DatabaseError(code, message))
       case Left(APIError.NotFoundError(code, message)) => Left(APIError.NotFoundError(code, message))
