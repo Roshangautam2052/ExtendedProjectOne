@@ -12,7 +12,7 @@ import scala.concurrent.Future
 
 class ApplicationControllerSpec extends BaseSpecWithApplication {
   val TestApplicationController = new ApplicationController(
-    component, repository, executionContext,service
+    component, repoService, executionContext,service
   )
   private val dataModel: Book = Book(
     "abcd",
@@ -142,9 +142,9 @@ class ApplicationControllerSpec extends BaseSpecWithApplication {
     }
   }
 
-  override def beforeEach(): Unit = await(repository.deleteAll())
-
-  override def afterEach(): Unit = await(repository.deleteAll())
+//  override def beforeEach(): Unit = await(repository.deleteAll())
+//
+//  override def afterEach(): Unit = await(repository.deleteAll())
 
 
 }

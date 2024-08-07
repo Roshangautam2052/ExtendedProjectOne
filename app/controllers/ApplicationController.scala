@@ -27,25 +27,18 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
 
   def index(): Action[AnyContent] = Action.async { implicit request =>
     repoService.indexService().map {
-      case Right(item) => if(item.nonEmpty)Ok {
-        Json.toJson(item)
-      }
-      else{
-        NotFound {
-          Json.toJson("The book list is empty")
-        }
-      }
-      case Left(error) => Status(error.httpResponseStatus)(Json.toJson(error.upstreamStatus))
+      case Right(book) => Ok(Json.toJson(book))
+      case Left(error) =>  Status(error.httpResponseStatus)(Json.toJson("error" -> error.reason))
     }
   }
 
   def create: Action[JsValue] = Action.async(parse.json) { implicit request =>
     request.body.validate[Book] match {
       case JsSuccess(book, _) =>
-        repoService.createService(book).map(_ => Created
-        {
-          Json.toJson(s"Successfully Created ${request.body}")
-        })
+        repoService.createService(book).map{
+          case Right(createdBook) => Created(Json.toJson(createdBook))
+          case Left(error) => Status(error.httpResponseStatus)(Json.toJson(error.reason))
+        }
       case JsError(_) => Future(BadRequest{
         Json.toJson(s"Invalid body ${request.body}")
       })
@@ -55,24 +48,21 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
   def read(id: String): Action[AnyContent] = Action.async { implicit request =>
     repoService.readService(id).map {
       case Right(book) => Ok(Json.toJson(book))
-      case Left(error) => NotFound(Json.obj("error" -> error.reason))
+      case Left(error) => Status(error.httpResponseStatus)(Json.toJson(error.reason))
     }
   }
 
   def findByName(name:String): Action[AnyContent] = Action.async { implicit request =>
     repoService.findByNameService(name).map {
       case Right(book) => Ok(Json.toJson(book))
-      case Left(error) => NotFound(Json.toJson("error" -> error.reason))
+      case Left(error) => Status(error.httpResponseStatus)(Json.toJson(error.reason))
     }
   }
 
-  def updateFieldValue(id:String,fieldName:String,  newValue:String): Action[AnyContent] = Action.async { implicit request =>
+  def updateFieldValue(id:String, fieldName:String,newValue:String): Action[AnyContent] = Action.async { implicit request =>
     repoService.updateFieldValueService(id, fieldName, newValue).map {
-      case Right(result) => if (result.getMatchedCount > 0 && result.getModifiedCount > 0) {
-        Accepted(Json.obj("message" -> s"Field '$fieldName' updated successfully"))
-      } else {
-        Ok(Json.obj("message" -> s"Field '$fieldName' already has the value '$newValue' or was not modified"))}
-      case Left(error) => NotFound(Json.toJson("error" -> error.reason))
+      case Right(result) => Accepted(Json.obj("message" -> s"Field '$fieldName' updated successfully"))
+      case Left(error) => Status(error.httpResponseStatus)(Json.toJson(error.reason))
     }
   }
 
@@ -80,11 +70,8 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
     request.body.validate[Book] match {
       case JsSuccess(book: Book, _) =>
         repoService.updateService(id,book).map {
-          case Right(result) => if (result.getMatchedCount > 0 && result.getModifiedCount > 0) {
-            Accepted(Json.obj("message" -> s"Field with ${id} updated successfully"))
-          } else {
-            Ok(Json.obj("message" -> s"Field ${id} already has the value or was not modified"))}
-          case Left(error) => NotFound(Json.toJson("error" -> error.reason))
+          case Right(result) => Accepted(Json.obj("message" -> s"Field with ${id} updated successfully"))
+          case Left(error) =>  Status(error.httpResponseStatus)(Json.toJson(error.reason))
         }
       case JsError(_) => Future(BadRequest{
         Json.toJson(s"The request body is invalid: ${request.body}")
@@ -94,13 +81,9 @@ class ApplicationController @Inject()(val controllerComponents: ControllerCompon
 
   def delete(id: String): Action[AnyContent] = Action.async { implicit request =>
     repoService.deleteService(id).map {
-      case Right(deletedResult) => if (deletedResult.getDeletedCount > 0) {
-        Accepted(Json.toJson(s"Successfully deleted the book with id: $id"))
-      }
-      else {
-        NotFound(s"Could not find  the book with id: $id")
-      }
-      case Left(error) => NotFound(Json.toJson("error" -> error.reason))
+      case Right(deletedResult) => Accepted(Json.toJson(s"Successfully deleted the book with id: $id"))
+      case Left(error) => Status(error.httpResponseStatus)(Json.toJson(error.reason))
+
     }
   }
 

@@ -17,9 +17,14 @@ sealed abstract class APIError(
         Status.NOT_FOUND,
         s"Bad response from upstream; got status: ${upstreamStatus}, and got reason ${upstreamMessage}"
       )
-    final case class BadRequestError(upstreamStatus:Int, upstreamMessage: String)
+    final case class DatabaseError(upstreamStatus:Int, upstreamMessage: String)
       extends APIError(
-        Status.BAD_REQUEST,
+        Status.INTERNAL_SERVER_ERROR,
+        s"Bad response from upstream; got status: ${upstreamStatus}, and got reason ${upstreamMessage}"
+      )
+    final case class NotModified(upstreamStatus:Int, upstreamMessage: String)
+      extends APIError(
+        Status.NOT_MODIFIED,
         s"Bad response from upstream; got status: ${upstreamStatus}, and got reason ${upstreamMessage}"
       )
   }

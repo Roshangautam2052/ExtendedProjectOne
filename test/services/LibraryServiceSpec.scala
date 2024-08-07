@@ -1,4 +1,4 @@
-package controllers
+package services
 
 import cats.data.EitherT
 import connectors.LibraryConnector
@@ -10,9 +10,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.libs.json.Format.GenericFormat
 import play.api.libs.json.{JsValue, Json, OFormat}
-import services.LibraryService
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 
 class LibraryServiceSpec extends AnyWordSpec with Matchers with MockFactory with ScalaFutures with GuiceOneServerPerSuite {
